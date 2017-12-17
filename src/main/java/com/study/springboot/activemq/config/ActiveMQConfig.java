@@ -39,7 +39,7 @@ public class ActiveMQConfig {
         //Config Redelivery Policy in Redelivery Policy Map
         ActiveMQQueue queue10s = new ActiveMQQueue(Queues.QUEUE_REDELIVERY_EVERY_10_SECONDS);
         RedeliveryPolicy qp10Seconds = new RedeliveryPolicy();
-        qp10Seconds.setInitialRedeliveryDelay(1000);
+        qp10Seconds.setInitialRedeliveryDelay(10000);
         qp10Seconds.setUseCollisionAvoidance(true);
         qp10Seconds.setRedeliveryDelay(10000);
         qp10Seconds.setUseExponentialBackOff(false);
@@ -47,17 +47,27 @@ public class ActiveMQConfig {
         qp10Seconds.setDestination(queue10s);
 
         ActiveMQQueue queueEveryMinute = new ActiveMQQueue(Queues.QUEUE_REDELIVERY_EVERY_MINUTE);
-        RedeliveryPolicy qpEverySeconds = new RedeliveryPolicy();
-        qpEverySeconds.setInitialRedeliveryDelay(0);
-        qpEverySeconds.setRedeliveryDelay(60000);
-        qpEverySeconds.setUseExponentialBackOff(false);
-        qpEverySeconds.setMaximumRedeliveries(3);
-        qpEverySeconds.setUseCollisionAvoidance(true);
-        qpEverySeconds.setDestination(queueEveryMinute);
+        RedeliveryPolicy qpEveryMinute = new RedeliveryPolicy();
+        qpEveryMinute.setInitialRedeliveryDelay(60000);
+        qpEveryMinute.setRedeliveryDelay(60000);
+        qpEveryMinute.setUseCollisionAvoidance(true);
+        qpEveryMinute.setUseExponentialBackOff(false);
+        qpEveryMinute.setMaximumRedeliveries(3);
+        qpEveryMinute.setDestination(queueEveryMinute);
+
+        ActiveMQQueue queue10sAck = new ActiveMQQueue(Queues.QUEUE_REDELIVERY_EVERY_10_SECONDS_ACK);
+        RedeliveryPolicy qp10SecondsACk = new RedeliveryPolicy();
+        qp10SecondsACk.setInitialRedeliveryDelay(10000);
+        qp10SecondsACk.setUseCollisionAvoidance(true);
+        qp10SecondsACk.setRedeliveryDelay(10000);
+        qp10SecondsACk.setUseExponentialBackOff(false);
+        qp10SecondsACk.setMaximumRedeliveries(3);
+        qp10SecondsACk.setDestination(queue10sAck);
 
         RedeliveryPolicyMap rdMap = connectionFactory.getRedeliveryPolicyMap();
         rdMap.put(queue10s, qp10Seconds);
-        rdMap.put(queueEveryMinute, qp10Seconds);
+        rdMap.put(queueEveryMinute, qpEveryMinute);
+        rdMap.put(queue10sAck, qp10SecondsACk);
 
         connectionFactory.setRedeliveryPolicyMap(rdMap);
 
@@ -79,6 +89,24 @@ public class ActiveMQConfig {
         factory.setConnectionFactory(connectionFactory());
         factory.setSessionTransacted(true);
         factory.setSessionAcknowledgeMode(Session.AUTO_ACKNOWLEDGE);
+        return factory;
+    }
+
+    @Bean
+    public JmsTemplate jmsAckTemplate() {
+        JmsTemplate template = new JmsTemplate();
+        template.setConnectionFactory(connectionFactory());
+        template.setSessionAcknowledgeMode(Session.CLIENT_ACKNOWLEDGE);
+        template.setDeliveryMode(DeliveryMode.PERSISTENT);
+        return template;
+    }
+
+    @Bean
+    public DefaultJmsListenerContainerFactory jmsACKListenerContainerFactory() {
+        DefaultJmsListenerContainerFactory factory = new DefaultJmsListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory());
+        factory.setSessionTransacted(false);
+        factory.setSessionAcknowledgeMode(Session.CLIENT_ACKNOWLEDGE);
         return factory;
     }
 }
