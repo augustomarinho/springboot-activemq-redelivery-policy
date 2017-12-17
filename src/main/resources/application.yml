@@ -2,6 +2,6 @@ server:
   port: 8090
 
 spring.activemq:
-  broker-url: failover:(tcp://localhost:61616)?randomize=false&reconnectSupported=true
+  broker-url: failover:(tcp://localhost:61616)?randomize=false&reconnectSupported=true&jms.redeliveryPolicy.maximumRedeliveries=0
   user: admin
   password: admin

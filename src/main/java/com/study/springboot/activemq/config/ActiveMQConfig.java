@@ -9,8 +9,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jms.annotation.EnableJms;
 import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
+import org.springframework.jms.connection.JmsTransactionManager;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.util.ErrorHandler;
 
 import javax.jms.DeliveryMode;
 import javax.jms.Session;
@@ -64,14 +66,47 @@ public class ActiveMQConfig {
         qp10SecondsACk.setMaximumRedeliveries(3);
         qp10SecondsACk.setDestination(queue10sAck);
 
+
+        ActiveMQQueue queue10sTransactional = new ActiveMQQueue(Queues.QUEUE_TRANSACTIONAL);
+        RedeliveryPolicy qp10SecondsTransactional = new RedeliveryPolicy();
+        qp10SecondsTransactional.setInitialRedeliveryDelay(10000);
+        qp10SecondsTransactional.setUseCollisionAvoidance(true);
+        qp10SecondsTransactional.setRedeliveryDelay(10000);
+        qp10SecondsTransactional.setUseExponentialBackOff(false);
+        qp10SecondsTransactional.setMaximumRedeliveries(3);
+        qp10SecondsTransactional.setDestination(queue10sTransactional);
+
         RedeliveryPolicyMap rdMap = connectionFactory.getRedeliveryPolicyMap();
         rdMap.put(queue10s, qp10Seconds);
         rdMap.put(queueEveryMinute, qpEveryMinute);
-        rdMap.put(queue10sAck, qp10SecondsACk);
+        rdMap.put(queue10sAck, qp10SecondsTransactional);
+        rdMap.put(queue10sTransactional, qp10SecondsTransactional);
 
         connectionFactory.setRedeliveryPolicyMap(rdMap);
 
         return connectionFactory;
+    }
+
+    @Bean
+    public JmsTransactionManager jmsTransactionManager() {
+        JmsTransactionManager jmsTransactionManager = new JmsTransactionManager();
+        jmsTransactionManager.setConnectionFactory(connectionFactory());
+        return jmsTransactionManager;
+    }
+
+    @Bean
+    public DefaultJmsListenerContainerFactory jmsTransactionalContainerFactory() {
+        DefaultJmsListenerContainerFactory factory = new DefaultJmsListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory());
+        factory.setSessionTransacted(true);
+        factory.setSessionAcknowledgeMode(Session.AUTO_ACKNOWLEDGE);
+        factory.setErrorHandler(new ErrorHandler() {
+            @Override
+            public void handleError(Throwable throwable) {
+
+            }
+        });
+        return factory;
     }
 
     @Bean
